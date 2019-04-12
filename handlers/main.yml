@@ -1,0 +1,7 @@
+---
+- name: reload nomad
+  service: name=nomad_{{ item }} state=reloaded
+  loop: "{{ nomad_agents }}"
+
+- name: reload systemd daemon
+  systemd: daemon_reload=yes

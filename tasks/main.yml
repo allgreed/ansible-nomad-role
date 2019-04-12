@@ -1,0 +1,120 @@
+---
+- include_vars:
+    file: vars.yml
+
+- name: generate list of servers to connect
+  set_fact:
+    nomad_servers_not_self: "{{ nomad_servers | difference([inventory_hostname]) }}"
+
+- name: install Nomad dependencies
+  package: name="{{ item }}" state=latest
+  loop:
+    - cgroup-bin
+    - libcgroup1
+
+- name: acquire Nomad version
+  block:
+  - name: ask the host for Nomad version
+    command: nomad version
+    register: nomad_version_cmd
+    changed_when: no
+    failed_when: no
+
+  - name: fail if `nomad` retruns with an unexpected code"
+    fail:
+      msg: "`nomad version` returned with unknown exit code, log: {{ nomad_version_cmd }}"
+    when: nomad_version_cmd.rc not in [0, 2]
+
+  - name: parse Nomad version
+    set_fact:
+      installed_nomad_version: "{{ nomad_version_cmd.stdout | default('') | regex_search('([0-9.]+)') }}"
+
+- name: install Nomad
+  block:
+    - name: Add Nomad group
+      group:
+        name: "{{ nomad_group }}"
+        state: present
+
+    - name: Add Nomad user
+      user:
+        name: "{{ nomad_user }}"
+        group: "{{ nomad_group }}"
+        system: yes
+
+  # TODO: Extract base and modify unit template
+
+    - name: install installation dependencies
+      package: name=unzip state=present
+
+    - name: download Nomad packed binary
+      get_url:
+        dest: /tmp/nomad.zip
+        url: https://releases.hashicorp.com/nomad/{{ nomad_version }}/nomad_{{ nomad_version }}_linux_amd64.zip
+        checksum: sha256:https://releases.hashicorp.com/nomad/{{ nomad_version }}/nomad_{{ nomad_version}}_SHA256SUMS
+        owner: root
+        group: root
+
+    - name: unpack binary into /usr/bin
+      unarchive:
+        remote_src: yes
+        src: /tmp/nomad.zip
+        dest: /usr/bin
+        owner: "{{ nomad_user }}"
+        group: "{{ nomad_group }}"
+        mode: 0755
+  always:
+    - name: clean Nomad binary pack
+      file: state=absent path=/tmp/nomad.zip
+
+    - name: remove installation packages
+      package: state=absent name=unzip
+
+  when: not installed_nomad_version or installed_nomad_version != nomad_version
+
+- name: create data directory
+  file:
+    dest: /var/nomad
+    state: directory
+    owner: "{{ nomad_user }}"
+    group: "{{ nomad_group}}"
+    mode: 0700
+
+- name: create config directory
+  file:
+    dest: /etc/nomad.d/
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+
+- name: insert Nomad configuration
+  template:
+    src: templates/{{ item }}.hcl.j2
+    dest: /etc/nomad.d/{{ item }}.hcl
+    owner: root
+    group: root
+    mode: 0644
+  loop: "{{ nomad_agents }}"
+  notify:
+    - reload nomad
+
+- name: create service
+  template:
+    src: templates/nomad.service.j2
+    # TODO: Is this the propper place to install a service?
+    dest: /lib/systemd/system/nomad_{{ item }}.service
+    owner: root
+    group: root
+    mode: 0644
+  loop: "{{ nomad_agents }}"
+  notify:
+    - reload systemd daemon
+
+- name: start Nomad
+  service:
+    name: nomad_{{ item }}
+    enabled: true
+    state: started
+  loop:
+    - "{{ nomad_agents }}"
