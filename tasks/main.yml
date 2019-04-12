@@ -116,5 +116,4 @@
     name: nomad_{{ item }}
     enabled: true
     state: started
-  loop:
-    - "{{ nomad_agents }}"
+  loop: "{{ nomad_agents }}"
