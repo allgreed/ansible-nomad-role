@@ -1,5 +1,6 @@
 galaxy_info:
-  author: 
+  role_name: nomad
+  author: allgreed
   description: Quite opinionated role for bootstraping a single region, single datacenter Nomad cluster
   license: MIT
   min_ansible_version: 2.4
