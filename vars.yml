@@ -1,0 +1,7 @@
+nomad_version: "0.8.7"
+nomad_user: root
+nomad_group: root
+nomad_agents:
+    - client
+    - server
+nomad_servers: "{{ play_hosts | list }}"

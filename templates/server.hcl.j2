@@ -1,0 +1,21 @@
+# Increase log verbosity
+log_level = "DEBUG"
+
+data_dir = "/var/nomad"
+
+bind_addr = "{{ inventory_hostname }}"
+
+server {
+    enabled = true
+
+    bootstrap_expect = {{ nomad_servers | length }}
+
+    server_join {
+        retry_join = [
+            {%- set comma = joiner(",") -%}
+            {% for server in nomad_servers_not_self -%}
+                {{ comma() }}"{{ server }}:4648"
+            {%- endfor -%}
+        ]
+    }
+}

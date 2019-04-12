@@ -1,0 +1,22 @@
+# Increase log verbosity
+log_level = "DEBUG"
+
+data_dir = "/var/nomad"
+
+client {
+    enabled = true
+
+    # For demo assume we are talking to server1. For production,
+    # this should be like "nomad.service.consul:4647" and a system
+    # like Consul used for service discovery.
+    servers = [
+            {%- set comma = joiner(",") -%}
+            {% for server in nomad_servers -%}
+                {{ comma() }}"{{ server }}:4647"
+            {%- endfor -%}
+    ]
+}
+
+ports {
+    http = 5656
+}
