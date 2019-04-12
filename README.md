@@ -1,4 +1,4 @@
-# ansible-nomad-role
+# Ansible Role: Nomad
 Quite opinionated Ansible role for bootstraping a single region, single datacenter Nomad cluster
 
 ## Role Variables
