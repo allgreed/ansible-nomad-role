@@ -102,8 +102,7 @@
 - name: create service
   template:
     src: templates/nomad.service.j2
-    # TODO: Is this the propper place to install a service?
-    dest: /lib/systemd/system/nomad_{{ item }}.service
+    dest: /etc/systemd/system/nomad_{{ item }}.service
     owner: root
     group: root
     mode: 0644
